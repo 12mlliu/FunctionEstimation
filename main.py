@@ -20,7 +20,7 @@ from src.trainer import Trainer
 from src.evaluator import Evaluator
 
 
-np.seterr(all='raise')
+#np.seterr(all='raise')
 
 
 def get_parser():
@@ -200,9 +200,9 @@ def main(params):
             #    else:
             #        trainer.enc_dec_step(task)
             #    trainer.iter()
-
+        
         logger.info("============ End of epoch %i ============" % trainer.epoch)
-
+        
         # evaluate perplexity
         scores = evaluator.run_all_evals()
 
@@ -216,7 +216,7 @@ def main(params):
         trainer.save_best_model(scores)
         trainer.save_periodic()
         trainer.end_epoch(scores)
-
+        
 
 if __name__ == '__main__':
 

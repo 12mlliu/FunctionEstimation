@@ -420,6 +420,7 @@ class Trainer(object):
             data = d[:,i].tolist()
             #prefix2 = [env.id2word[wid] for wid in x2[1:len2[i] - 1, i].tolist()]
             # infix
+            print(prefix)
             infix = env.prefix_to_infix(prefix)[1:-1]
             #infix2 = env.prefix_to_infix(env.unclean_prefix(prefix2))[1:-1]
             # save
@@ -434,7 +435,7 @@ class Trainer(object):
             self.file_handler_infix.write(f'{infix_str}\n')
             self.file_handler_prefix.flush()
             self.file_handler_infix.flush()
-            #self.EQUATIONS[(prefix1_str, prefix2_str)] = self.EQUATIONS.get((prefix1_str, prefix2_str), 0) + 1
+            self.EQUATIONS[(prefix_str)] = self.EQUATIONS.get((prefix_str), 0) + 1
 
         # number of processed sequences / words
         self.n_equations += self.params.batch_size

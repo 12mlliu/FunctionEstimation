@@ -5,9 +5,10 @@
 
 first generate data, and export it into a dataset that can be used for training. This can easily be done by setting `--export_data true`:
 ```bash
-python main.py --export_data true --dump_path dataset/ --batch_size 32 --cpu true --exp_name firsttry --num_workers 1 --env_base_seed -1  --n_variables 1 --leaf_probs "0.75,0.25,0" --max_ops 5 --max_int 5 --positive true --max_len 64 --epoch_size 10 --operators "add:10,sub:3,mul:10,pow2:4,pow3:2,pow4:1,pow5:1,exp:4,sin:4,cos:4,tan:4"
-
+python main.py --export_data true --dump_path dataset/ --batch_size 32 --cpu true --exp_name first --num_workers 1 --env_base_seed -1  --n_variables 1 --leaf_probs "0.75,0.25,0" --max_ops 5 --max_int 5 --positive true --max_len 64 --epoch_size 10 --max_epoch 10 --operators "add:10,sub:3,mul:10,pow2:4,pow3:2,pow4:1,pow5:1,exp:4,sin:4,cos:4,tan:4"
+"add:10,sub:3,mul:10,div:5,sqrt:4,pow2:4,pow3:2,pow4:1,pow5:1,ln:4,exp:4,sin:4,cos:4,tan:4,asin:1,acos:1,atan:1,sinh:1,cosh:1,tanh:1,asinh:1,acosh:1,atanh:1"
 ```
+
 Data will be exported in the prefix and infix formats to:
 - `./dumped/exp_name/EXP_ID/data.prefix`
 - `./dumped/exp_name/EXP_ID/data.infix`
@@ -18,7 +19,7 @@ If you generate your own dataset, you will notice that the generator generates a
 
 [bug]
 ```bash
-cat ./dataset/firsttry/*/data.prefix | awk 'BEGIN{PROCINFO["sorted_in"]="@val_num_desc"}{c[$0]++}END{for (i in c) printf("%i|%s\n",c[i],i)}' > data.prefix.counts
+cat ./dataset/first/*/data.prefix | awk 'BEGIN{PROCINFO["sorted_in"]="@val_num_desc"}{c[$0]++}END{for (i in c) printf("%i|%s\n",c[i],i)}' > data.prefix.counts
 
 ```
 

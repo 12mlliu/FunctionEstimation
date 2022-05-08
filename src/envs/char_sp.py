@@ -14,6 +14,7 @@ import math
 import itertools
 from collections import OrderedDict
 import numpy as np
+np.seterr(invalid='ignore')#suppress RuntimeWarning for nan value
 import numexpr as ne
 import torch
 from torch.utils.data.dataset import Dataset
@@ -29,6 +30,8 @@ from ..utils import timeout, TimeoutError
 from .sympy_utils import remove_root_constant_terms, reduce_coefficients, reindex_coefficients
 from .sympy_utils import extract_non_constant_subtree, simplify_const_with_coeff, simplify_equa_diff, clean_degree2_solution
 from .sympy_utils import remove_mul_const, has_inf_nan, has_I, simplify
+
+
 '''
 import argparse
 def bool_flag(s):
@@ -277,8 +280,8 @@ class CharSPEnvironment(object):
         assert len(self.all_ops) == len(self.una_ops) + len(self.bin_ops)
 
         # symbols / elements
-        #self.constants = ['pi', 'E']
-        self.constants = ['pi']
+        self.constants = ['pi', 'E']
+        #self.constants = ['pi']
         self.variables = OrderedDict({
             'x': sp.Symbol('x', real=True, nonzero=True),  # , positive=True
         #    'y': sp.Symbol('y', real=True, nonzero=True),  # , positive=True
@@ -767,7 +770,32 @@ class CharSPEnvironment(object):
             expr = simplify_const_with_coeff(expr, coeff)
         return expr
 
-
+    def findMaxmumPos(self,pos):
+        maxvalue=0
+        maxstart=0
+        maxend = 0
+    
+        start=0
+        value=0
+        for i,e in enumerate(pos):
+            #the start point
+            if e == 1 and start==0:
+                start = i #record the start point
+                value=1
+            #the last point or the endpoint
+            elif (i == len(pos)-1) or (e==0 and start!=0):
+                #print("the endpoint")
+                if value >maxvalue:
+                    maxstart = start
+                    maxend = i-1
+                    maxvalue=value
+                start=0 #renew the start point to 0
+            #  accumulate  
+            elif e==1 and start!=0:
+                value+=1            
+            else:
+                continue
+        return maxstart, maxend, maxvalue
 
 
     @timeout(3)
@@ -799,20 +827,28 @@ class CharSPEnvironment(object):
          # skip constant expressions
         if x not in f.free_symbols:
             return None
-        #no need for this procedure, because there is no coefficients
-        # remove additive constant, re-index coefficients
-        #if rng.randint(2) == 0:
-        #    f = remove_root_constant_terms(f, x, 'add') # this can be removed
-        #f = self.reduce_coefficients(f)
-        #f = self.simplify_const_with_coeff(f)
-        #f = self.reindex_coefficients(f)
+        
 
         # generate dataset
         print(f)
         function = sp.lambdify(x, f)
         data_x = np.linspace(-10,10,self.datalength)
-        data_y = np.array(function(data_x))
+        data_y = function(data_x)
+        
         print(all(np.isnan(data_y)))
+        #if there is any nan value, we'll shink the x domain to avoid generate nan
+        if any(np.isnan(data_y)):
+            print("encounter nan value")
+            pos = np.isnan(data_y)
+            pos=[0 if e else 1 for e in pos]
+            start,end,_ = self.findMaxmumPos(pos)
+            print("new domain is:")
+            print(data_x[start],data_x[end])
+            data_x = np.linspace(data_x[start],data_x[end],self.datalength)
+            data_y = function(data_x)
+            assert any(np.isnan(data_y)) is False,"still has nan after twice computation"
+        
+        data_y = np.array(data_y)
         data = np.array(list(zip(data_x,data_y))).flatten()
         # write (data_x,data_y) and f_prefix 
         #data_x and data_y is used as input of model maybe csv
