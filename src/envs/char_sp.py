@@ -82,7 +82,18 @@ class InvalidPrefixExpression(Exception):
     def __str__(self):
         return repr(self.data)
 
-
+def big_value_filter(data_y):
+    #this functions like np.isnan()
+    #input: data_y is the generated dataset
+    #output: pos False is for valid value, True is for invalid value
+    pos = np.isnan(data_y) #detect nan
+    #pos=[0 if e else 1 for e in pos] # 0 is for invalid data
+    for i,v in enumerate(data_y):
+        #detect nan
+        if (v >=1e10) or (v<=1e-10 and v>=-1e-10) or (v<=-1e10):
+            pos[i]=True
+    return pos
+    
 def count_nested_exp(s):
     """
     Return the maximum number of nested exponential functions in an infix expression.
@@ -771,6 +782,7 @@ class CharSPEnvironment(object):
         return expr
 
     def findMaxmumPos(self,pos):
+        #in pos, find a substring with a longest length 1
         maxvalue=0
         maxstart=0
         maxend = 0
@@ -796,8 +808,9 @@ class CharSPEnvironment(object):
             else:
                 continue
         return maxstart, maxend, maxvalue
-
-
+    
+   
+    
     @timeout(3)
     def gen_func_points(self,rng):
         """
@@ -833,22 +846,31 @@ class CharSPEnvironment(object):
         print(f)
         function = sp.lambdify(x, f)
         data_x = np.linspace(-10,10,self.datalength)
-        data_y = function(data_x)
+        data_y = np.float32(function(data_x))
         
-        print(all(np.isnan(data_y)))
-        #if there is any nan value, we'll shink the x domain to avoid generate nan
-        if any(np.isnan(data_y)):
-            print("encounter nan value")
-            pos = np.isnan(data_y)
+        """
+        if data contrain inf
+        then discard this data(function), because even though we fix this inf problem,
+        the dataset still contrain very large number, which can cause nan in model computation
+        although we discard this function, that doesn't mean that we'll discard this type of function
+        such as exp. exp can still occur in another fuction, without inf
+        
+        pos not only for nan value, but also for those value who>1e10, 1e10<who<1e-10,and who <-1e10
+        """
+        pos = big_value_filter(data_y)  
+        #if there is any nan value, or big value, we'll shink the x domain to avoid generate nan
+        if any(pos):
+            print("encounter nan value abd big value")
             pos=[0 if e else 1 for e in pos]
             start,end,_ = self.findMaxmumPos(pos)
             print("new domain is:")
             print(data_x[start],data_x[end])
             data_x = np.linspace(data_x[start],data_x[end],self.datalength)
-            data_y = function(data_x)
+            data_y = np.float32(function(data_x))
             assert any(np.isnan(data_y)) is False,"still has nan after twice computation"
+            assert any((big_value_filter(data_y))) is False, "still has big value"
         
-        data_y = np.array(data_y)
+        
         data = np.array(list(zip(data_x,data_y))).flatten()
         # write (data_x,data_y) and f_prefix 
         #data_x and data_y is used as input of model maybe csv
@@ -1006,7 +1028,9 @@ class EnvDataset(Dataset):
         #y = [torch.LongTensor([self.env.word2id[w] for w in seq if w in self.env.word2id]) for seq in y]#y is float
         #lengths = [len(s) for s in d]
         #print(lengths)
-        d = torch.FloatTensor(np.array(d))
+        d = torch.from_numpy(np.array(d)).float() #should use this one
+        #when turn it to tensor, generate inf #d = torch.FloatTensor(np.array(d))
+        assert any([any(i)for i in torch.isinf(d)]) is False, "has inf in collate_fn"
         f, f_len = self.env.batch_sequences(f)
         d, d_len = self.env.batch_sequences_data(d)
         return (d, d_len), (f, f_len), torch.LongTensor(nb_ops)
@@ -1060,6 +1084,7 @@ class EnvDataset(Dataset):
         y = y.split()
         y = [float(e) for e in y]
         assert len(x) >= 1 and len(y) >= 1
+        assert any(np.isinf(y)) is False,"has inf when reading"
         return x, y
 
     def generate_sample(self):
@@ -1085,7 +1110,7 @@ class EnvDataset(Dataset):
         if CLEAR_SYMPY_CACHE_FREQ > 0 and self.count % CLEAR_SYMPY_CACHE_FREQ == 0:
             logger.warning(f"Clearing SymPy cache (worker {self.get_worker_id()})")
             clear_cache()
-
+        assert any(np.isinf(d)) is False,"still has inf after twice computation"
         return f, d
     
     

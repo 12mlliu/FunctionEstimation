@@ -52,7 +52,7 @@ awk -F"[|\t]" 'NR==FNR { lines[$2]=1; next } !($2 in lines)' <(cat data.prefix.c
 
 ```bash
 
-python main.py --exp_name first_train --reload_data "data.prefix.counts.train,data.prefix.counts.valid,data.prefix.counts.test" --reload_size 30 --emb_dim 8 --n_enc_layers 6 --n_dec_layers 6 --n_heads 2 --optimizer "adam,lr=0.0001"  --batch_size 30 --epoch_size 2 --validation_metrics valid_prim_fwd_acc --cpu true
+python main.py --exp_name first_train --reload_data "data.prefix.counts.train,data.prefix.counts.valid,data.prefix.counts.test" --reload_size 103724 --emb_dim 8 --n_enc_layers 6 --n_dec_layers 6 --n_heads 2 --optimizer "adam,lr=0.0001"  --batch_size 32 --epoch_size 10000 --validation_metrics valid_prim_fwd_acc --cpu true
 
 
 ```

@@ -107,7 +107,7 @@ class Trainer(object):
         self.last_time = time.time()
 
         # reload potential checkpoints
-        self.reload_checkpoint()
+        #self.reload_checkpoint()
 
         # file handler to export data
         if params.export_data:
@@ -417,7 +417,9 @@ class Trainer(object):
         for i in range(len(f_len)):
             # prefix
             prefix = [env.id2word[wid] for wid in f[1:f_len[i] - 1, i].tolist()]
+            #assert any(np.isinf(d)) is False,"still has inf after twice computation"
             data = d[:,i].tolist()
+            assert any(np.isinf(data)) is False,"still has inf after twice computation"
             #prefix2 = [env.id2word[wid] for wid in x2[1:len2[i] - 1, i].tolist()]
             # infix
             print(prefix)
@@ -465,7 +467,9 @@ class Trainer(object):
 
         # forward / loss
         encoded = encoder('fwd', x=x1, lengths=len1, causal=False)
+        encoded = torch.nan_to_num(encoded)
         decoded = decoder('fwd', x=x2, lengths=len2, causal=True, src_enc=encoded.transpose(0, 1), src_len=len1/self.params.emb_dim)
+        decoded = torch.nan_to_num(decoded)
         _, loss = decoder('predict', tensor=decoded, pred_mask=pred_mask, y=y, get_scores=False)
         self.stats['loss'].append(loss.item())
 
