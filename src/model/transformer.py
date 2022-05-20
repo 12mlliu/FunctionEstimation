@@ -291,7 +291,7 @@ class TransformerModel(nn.Module):
         if previous_state is None:
             if self.is_encoder:
                 #encoder no embedding layer, no position layer
-                tensor=self.linear_project(x.view(bs,slen,self.token_size))#(bs,slen,token_size) --> (bs,slen,dim)
+                tensor=self.linear_projection(x.view(bs,slen,self.token_size))#(bs,slen,token_size) --> (bs,slen,dim)
             else:  
                 tensor = self.embeddings(x)                                #(bs,slen) --> (bs,slen,dim)
             
