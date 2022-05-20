@@ -168,6 +168,9 @@ class TransformerModel(nn.Module):
         self.is_decoder = not is_encoder
         self.with_output = with_output
 
+        #patch size  dataset 512 is splited in to 64 * 8 (8 is the length)
+        #every 64 datapoint can be seen as a token
+        self.token_size = params.token_size #default is 64
         # dictionary
         self.n_words = params.n_words
         self.eos_index = params.eos_index
@@ -183,14 +186,18 @@ class TransformerModel(nn.Module):
         self.dropout = params.dropout
         self.attention_dropout = params.attention_dropout
         assert self.dim % self.n_heads == 0, 'transformer dim must be a multiple of n_heads'
-
+        
+        #linear projection
+        self.linear_projection = nn.Linear(self.token_size,self.dim)
+        
         # embeddings
         self.position_embeddings = Embedding(N_MAX_POSITIONS, self.dim)
         if params.sinusoidal_embeddings:
             create_sinusoidal_embeddings(N_MAX_POSITIONS, self.dim, out=self.position_embeddings.weight)
         self.embeddings = Embedding(self.n_words, self.dim, padding_idx=self.pad_index)
         self.layer_norm_emb = nn.LayerNorm(self.dim, eps=1e-12)
-
+        
+        
         # transformer layers
         self.attentions = nn.ModuleList()
         self.layer_norm1 = nn.ModuleList()
@@ -242,8 +249,8 @@ class TransformerModel(nn.Module):
         slen, bs = x.size()
         if self.is_encoder:
             #we need to process slen and lengths
-            slen = int(slen/self.dim)
-            lengths = (lengths/self.dim).int()
+            slen = int(slen/self.token_size)
+            lengths = (lengths/self.token_size).int()
         
         assert lengths.size(0) == bs
         assert lengths.max().item() <= slen
@@ -261,6 +268,7 @@ class TransformerModel(nn.Module):
 
         # positions
         if positions is None:
+            #x.new, a same type tensor as x, with length slen, on the same device
             positions = x.new(slen).long()
             positions = torch.arange(slen, out=positions).unsqueeze(0)
         else:
@@ -283,10 +291,11 @@ class TransformerModel(nn.Module):
         if previous_state is None:
             if self.is_encoder:
                 #encoder no embedding layer, no position layer
-                tensor=x.view(bs,-1,self.dim)
+                tensor=self.linear_project(x.view(bs,slen,self.token_size))#(bs,slen,token_size) --> (bs,slen,dim)
             else:  
-                tensor = self.embeddings(x)
-                tensor = tensor + self.position_embeddings(positions).expand_as(tensor)
+                tensor = self.embeddings(x)                                #(bs,slen) --> (bs,slen,dim)
+            
+            tensor = tensor + self.position_embeddings(positions).expand_as(tensor)
             tensor = self.layer_norm_emb(tensor)
             tensor = F.dropout(tensor, p=self.dropout, training=self.training)
             tensor *= mask.unsqueeze(-1).to(tensor.dtype)

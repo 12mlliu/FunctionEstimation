@@ -168,7 +168,7 @@ class Evaluator(object):
 
             # forward / loss
             encoded = encoder('fwd', x=x1, lengths=len1, causal=False)
-            decoded = decoder('fwd', x=x2, lengths=len2, causal=True, src_enc=encoded.transpose(0, 1), src_len=len1/self.params.emb_dim)
+            decoded = decoder('fwd', x=x2, lengths=len2, causal=True, src_enc=encoded.transpose(0, 1), src_len=len1/self.params.token_size)
             word_scores, loss = decoder('predict', tensor=decoded, pred_mask=pred_mask, y=y, get_scores=True)
 
             # correct outputs per sequence / valid top-1 predictions
