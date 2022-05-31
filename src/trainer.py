@@ -422,7 +422,7 @@ class Trainer(object):
             assert any(np.isinf(data)) is False,"still has inf after twice computation"
             #prefix2 = [env.id2word[wid] for wid in x2[1:len2[i] - 1, i].tolist()]
             # infix
-            print(prefix)
+            #print(prefix)
             infix = env.prefix_to_infix(prefix)[1:-1]
             #infix2 = env.prefix_to_infix(env.unclean_prefix(prefix2))[1:-1]
             # save

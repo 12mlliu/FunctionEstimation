@@ -538,7 +538,7 @@ class CharSPEnvironment(object):
         #elif leaf_type == 1:
         #    return [list(self.coefficients.keys())[rng.randint(self.n_coefficients)]]
         elif leaf_type == 1:
-            c = rng.randint(1, max_int + 1)
+            c = rng.randint(1, max_int )
             c = c if (self.positive or rng.randint(2) == 0) else -c
             return self.write_int(c)
         else:
@@ -809,7 +809,44 @@ class CharSPEnvironment(object):
                 continue
         return maxstart, maxend, maxvalue
     
-   
+    def gen_only_points(self,rng):
+        """
+        Generate pairs of (function, datapoints)
+        start by generating a random function f, and use SymPy to generate datapoints
+        """
+        #seed = 1 #1 for random seed
+        #rng = np.random.RandomState(seed)
+        
+        x = self.variables['x']
+        #x = sp.Symbol('x')    
+        #if rng.randint(40) ==0:   #randint (0,40). the probability for true is 1/40 
+        #    nb_ops = rng.randint(0,3) # generate a random number from (0,3)
+        #else:
+        #    nb_ops = rng.randint(3,self.max_ops+1) #(3,16) #the total number of ops  
+        nb_ops = rng.randint(1,self.max_ops+1) #only allow 1 or 2 operators
+        self.stats = np.zeros(10,dtype = np.int64)       
+        #print(nb_ops)
+        #try:
+            #generate an expression and rewrite it
+            #avoid issues in 0 and convert to SymPy
+        f_expr = self._generate_expr(nb_ops,self.max_int,rng)
+        infix = self.prefix_to_infix(f_expr)
+        f = self.infix_to_sympy(infix)
+         # skip constant expressions
+        if x not in f.free_symbols:
+            return None
+     
+        # generate dataset
+        #print(f)
+        function = sp.lambdify(x, f)
+        data_x = np.linspace(-10,10,self.datalength)
+        data_y = np.float32(function(data_x))
+  
+        pos = big_value_filter(data_y)  
+        assert any(pos) is False, "there are nan or big value, so skip it"
+        #data = np.array(list(zip(data_x,data_y))).flatten()     
+        f_prefix = self.sympy_to_prefix(f)
+        return f_prefix,data_y
     
     @timeout(3)
     def gen_func_points(self,rng):
@@ -823,11 +860,11 @@ class CharSPEnvironment(object):
         x = self.variables['x']
         #x = sp.Symbol('x')
         
-        if rng.randint(40) ==0:   #randint (0,40). the probability for true is 1/40 
-            nb_ops = rng.randint(0,3) # generate a random number from (0,3)
-        else:
-            nb_ops = rng.randint(3,self.max_ops+1) #(3,16) #the total number of ops
-        
+        #if rng.randint(40) ==0:   #randint (0,40). the probability for true is 1/40 
+        #    nb_ops = rng.randint(0,3) # generate a random number from (0,3)
+        #else:
+        #    nb_ops = rng.randint(3,self.max_ops+1) #(3,16) #the total number of ops
+        nb_ops = rng.randint(1,self.max_ops+1) #only allow 1 or 2 operators
         self.stats = np.zeros(10,dtype = np.int64)
         
         #print(nb_ops)
@@ -837,15 +874,23 @@ class CharSPEnvironment(object):
         f_expr = self._generate_expr(nb_ops,self.max_int,rng)
         infix = self.prefix_to_infix(f_expr)
         f = self.infix_to_sympy(infix)
+        
+        numbers = [atom< (self.max_int) for atom in f.atoms() if atom.is_number] 
+        #print(f)
+        assert all(numbers), "there are number bigger than 10"
+        
          # skip constant expressions
         if x not in f.free_symbols:
             return None
         
 
         # generate dataset
-        print(f)
+        #print(f)
         function = sp.lambdify(x, f)
-        data_x = np.linspace(-10,10,self.datalength)
+        #randomly choose a start point and an end point for the data_x from(-1000,1000)
+        start_point = rng.randint(-100,100)
+        end_point = rng.randint(start_point+5,100) #there is an at least 5 gap between start and end
+        data_x = np.linspace(start_point,end_point,self.datalength)
         data_y = np.float32(function(data_x))
         
         """
@@ -860,11 +905,11 @@ class CharSPEnvironment(object):
         pos = big_value_filter(data_y)  
         #if there is any nan value, or big value, we'll shink the x domain to avoid generate nan
         if any(pos):
-            print("encounter nan value abd big value")
+            #print("encounter nan value abd big value")
             pos=[0 if e else 1 for e in pos]
             start,end,_ = self.findMaxmumPos(pos)
-            print("new domain is:")
-            print(data_x[start],data_x[end])
+            #print("new domain is:")
+            #print(data_x[start],data_x[end])
             data_x = np.linspace(data_x[start],data_x[end],self.datalength)
             data_y = np.float32(function(data_x))
             assert any(np.isnan(data_y)) is False,"still has nan after twice computation"

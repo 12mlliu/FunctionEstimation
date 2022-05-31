@@ -174,8 +174,13 @@ class Evaluator(object):
             # correct outputs per sequence / valid top-1 predictions
             t = torch.zeros_like(pred_mask, device=y.device)
             t[pred_mask] += word_scores.max(1)[1] == y
+            #print("y is: ",[env.id2word[wid] for wid in y.tolist()])
+            #pre=word_scores.max(1)[1]
+            #print("predict is ",[env.id2word[wid] for wid in pre.tolist()])
+            #print("t is: ",t)
             valid = (t.sum(0) == len2 - 1).cpu().long()
-
+            #print("valid is: ",valid)
+            
             # export evaluation details
             if params.eval_verbose:
                 for i in range(len(len1)):
@@ -274,7 +279,7 @@ class Evaluator(object):
 
             # forward
             encoded = encoder('fwd', x=x1, lengths=len1, causal=False)
-            decoded = decoder('fwd', x=x2, lengths=len2, causal=True, src_enc=encoded.transpose(0, 1), src_len=len1)
+            decoded = decoder('fwd', x=x2, lengths=len2, causal=True, src_enc=encoded.transpose(0, 1), src_len=len1/self.params.token_size)
             word_scores, loss = decoder('predict', tensor=decoded, pred_mask=pred_mask, y=y, get_scores=True)
 
             # correct outputs per sequence / valid top-1 predictions
